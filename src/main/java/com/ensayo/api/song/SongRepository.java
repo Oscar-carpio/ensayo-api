@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface SongRepository extends JpaRepository<Song, UUID> {
 
-    List<Song> findByDeletedFalseOrderByTitleAsc();
+    List<Song> findByOwnerIdAndDeletedFalseOrderByTitleAsc(UUID ownerId);
 }

@@ -16,25 +16,28 @@ public class SongService {
     }
 
     @Transactional(readOnly = true)
-    public List<SongResponse> findAll() {
-        return repository.findByDeletedFalseOrderByTitleAsc().stream()
+    public List<SongResponse> findAll(UUID ownerId) {
+        return repository.findByOwnerIdAndDeletedFalseOrderByTitleAsc(ownerId).stream()
                 .map(SongResponse::from)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public SongResponse findById(UUID id) {
-        return SongResponse.from(getActive(id));
+    public SongResponse findById(UUID ownerId, UUID id) {
+        return SongResponse.from(getActive(ownerId, id));
     }
 
-    // Crear o actualizar (upsert): el id lo decide el cliente
-    public SongResponse save(UUID id, SongRequest request) {
+    public SongResponse save(UUID ownerId, UUID id, SongRequest request) {
         long now = System.currentTimeMillis();
         Song song = repository.findById(id).orElseGet(() -> {
-            Song created = new Song(id);
+            Song created = new Song(id, ownerId);
             created.setCreatedAt(now);
             return created;
         });
+        // Ese id ya es de otra persona: respondemos 404, sin revelar que existe
+        if (!song.getOwnerId().equals(ownerId)) {
+            throw new SongNotFoundException(id);
+        }
         song.setTitle(request.title());
         song.setArtist(request.artist());
         song.setMusicalKey(request.musicalKey());
@@ -44,16 +47,15 @@ public class SongService {
         return SongResponse.from(repository.save(song));
     }
 
-    // Borrado lógico: la fila se queda para que los otros móviles se enteren al sincronizar
-    public void delete(UUID id) {
-        Song song = getActive(id);
+    public void delete(UUID ownerId, UUID id) {
+        Song song = getActive(ownerId, id);
         song.setDeleted(true);
         song.setUpdatedAt(System.currentTimeMillis());
     }
 
-    private Song getActive(UUID id) {
+    private Song getActive(UUID ownerId, UUID id) {
         return repository.findById(id)
-                .filter(song -> !song.isDeleted())
+                .filter(song -> song.getOwnerId().equals(ownerId) && !song.isDeleted())
                 .orElseThrow(() -> new SongNotFoundException(id));
     }
 }
