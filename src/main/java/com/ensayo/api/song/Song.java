@@ -13,6 +13,9 @@ public class Song {
     @Id
     private UUID id;
 
+    @Column(nullable = false)
+    private UUID ownerId;
+
     @Column(nullable = false, length = 200)
     private String title;
 
@@ -38,8 +41,9 @@ public class Song {
     protected Song() {
     }
 
-    public Song(UUID id) {
+    public Song(UUID id, UUID ownerId) {
         this.id = id;
+        this.ownerId = ownerId;
     }
 
     public UUID getId() {
@@ -100,5 +104,9 @@ public class Song {
 
     public void setDeleted(boolean deleted) {
         this.deleted = deleted;
+    }
+
+    public UUID getOwnerId() {
+        return ownerId;
     }
 }
